@@ -28,3 +28,5 @@ openssl = { version = "0.10", features = ["vendored"] }
 actix-web-httpauth = "0.8"
 tera = "1.17"
 http = "0.2"
+md5 = "0.7"
+derive_more = "0.99"
