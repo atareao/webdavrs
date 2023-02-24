@@ -33,11 +33,10 @@ RUN cargo build  --target x86_64-unknown-linux-musl --release
 ###############################################################################
 ## Final image
 ###############################################################################
-FROM alpine:3.16
+FROM alpine:3.17
 
 RUN apk add --update --no-cache \
-            su-exec~=0.2 \
-            tzdata~=2022 && \
+            su-exec~=0.2 &&\
     rm -rf /var/cache/apk && \
     rm -rf /var/lib/app/lists*
 # Copy the user
@@ -46,6 +45,7 @@ RUN apk add --update --no-cache \
 WORKDIR /app
 
 COPY entrypoint.sh /app/
+COPY migrations/ /app/migrations/
 # Copy our build
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/webdavrs /app/
 
