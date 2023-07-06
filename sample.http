@@ -1,0 +1,8 @@
+GET localhost:8080/v1/user
+Authorization: Basic bG9yZW56bzoxMjM0NTY3OA==
+
+GET localhost:8080/cc/ejemplo.md
+Authorization: Basic bG9yZW56bzoxMjM0NTY3OA==
+
+GET https://wd.territoriolinux.es
+Authorization: Basic VkghQipAI1pBVkhKWFg3a2QhV1U6QTJAYnZNSzhASm1UKlYzXm15UjY=
