@@ -20,6 +20,7 @@ pub struct User {
     pub id: i64,
     pub username: String,
     pub hashed_password: String,
+    pub active: bool,
     pub role: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -43,6 +44,7 @@ impl User{
             username: row.get("username"),
             hashed_password: row.get("hashed_password"),
             role: row.get("role"),
+            active: row.get("active"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
         }
@@ -75,15 +77,15 @@ impl User{
         let created_at = Utc::now();
         let updated_at = Utc::now();
         let sql = "INSERT INTO users (username, hashed_password, role,
-            created_at, updated_at) VALUES($1, $2, $3, $4, $5) 
-            RETURNING id, username, hashed_password, role, created_at,
-            updated_at;";
+            active, created_at, updated_at) VALUES($1, $2, $3, $4, $5, $6) 
+            RETURNING *";
         query(sql)
             .bind(&new.username)
             .bind(&hashed_password)
             .bind(role)
-            .bind(&created_at)
-            .bind(&updated_at)
+            .bind(true)
+            .bind(created_at)
+            .bind(updated_at)
             .map(Self::from_row)
             .fetch_one(pool.get_ref())
             .await

@@ -1,3 +1,5 @@
+mod http;
+mod models;
 mod list;
 mod user;
 
