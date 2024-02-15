@@ -2,6 +2,7 @@ mod user;
 mod estatic;
 mod root;
 mod config;
+mod webdav;
 
 use std::{sync::Arc, net::{SocketAddr, Ipv4Addr}, fmt::format};
 use sqlx::sqlite::SqlitePool;

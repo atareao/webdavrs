@@ -3,16 +3,52 @@ mod models;
 mod list;
 mod user;
 
-use actix_web::{App, web::{self, Data}, HttpServer, middleware::Logger};
-use dotenv::dotenv;
-use sqlx::{sqlite::{SqlitePool, SqlitePoolOptions}, migrate::{Migrator, MigrateDatabase}};
-use std::{env, path::Path, process};
+use sqlx::{
+    sqlite::{
+        SqlitePool,
+        SqlitePoolOptions
+    },
+    migrate::{
+        Migrator,
+        MigrateDatabase
+    }
+};
+use std::{
+    env::{
+        self,
+        var
+    },
+    path::Path,
+    process
+};
 use env_logger::Env;
 use log::{error, info};
-use dav_server::{fakels::FakeLs, localfs::LocalFs, DavHandler, actix::{DavRequest, DavResponse}};
-use actix_web_httpauth::extractors::basic::{BasicAuth, self};
-use crate::list::Lister;
-use crate::user::{User, NewUser, Role, create_user, read_user, read_all_users, delete_user};
+use dav_server::{
+    fakels::FakeLs,
+    localfs::LocalFs,
+    DavHandler,
+    actix::{
+        DavRequest,
+        DavResponse
+    }
+};
+use tracing_subscriber::{
+    EnvFilter,
+    layer::SubscriberExt,
+    util::SubscriberInitExt
+};
+use crate::{
+    list::Lister,
+    user::{
+        User,
+        NewUser,
+        Role,
+        create_user,
+        read_user,
+        read_all_users,
+        delete_user
+    },
+};
 
 
 pub async fn dav_handler(auth: BasicAuth, req: DavRequest, davhandler: Data<DavHandler>, folder: Data<String>, pool: Data<SqlitePool>) -> DavResponse{
@@ -53,41 +89,36 @@ pub async fn dav_handler(auth: BasicAuth, req: DavRequest, davhandler: Data<DavH
 }
 
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL not set");
-    let port = env::var("PORT").expect("PORT not set");
-    let folder = std::env::var("FOLDER").expect("FOLDER not set");
-    let debug_level = env::var("DEBUG_LEVEL").unwrap_or("info".to_string());
-    let username = env::var("USERNAME").expect("USERNAME not set");
-    let password = env::var("PASSWORD").expect("PASSWORD not set");
-    env_logger::init_from_env(Env::default().default_filter_or(debug_level));
+    let log_level = var("RUST_LOG").unwrap_or("debug".to_string());
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_str(&log_level).unwrap())
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+    info!("Log level: {log_level}");
+    let db_url = var("DB_URL").unwrap_or("wevdavrs.db".to_string());
+    info!("DB url: {db_url}");
 
-    if sqlx::Sqlite::database_exists(&db_url).await.unwrap(){
-        info!("The database exists");
-    }else{
-        info!("The database not exists. Creating database");
+    if !sqlx::Sqlite::database_exists(&db_url).await.unwrap(){
         sqlx::Sqlite::create_database(&db_url).await.unwrap();
-        info!("Database creted");
     }
 
-    let migrations = if env::var("RUST_ENV") == Ok("production".to_string()){
+    let migrations = if var("RUST_ENV") == Ok("production".to_string()){
         std::env::current_exe().unwrap().parent().unwrap().join("migrations")
     }else{
         let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        Path::new(&crate_dir).join("./migrations")
+        Path::new(&crate_dir).join("migrations")
     };
-
     info!("{}", &migrations.display());
 
     let pool = SqlitePoolOptions::new()
-        .max_connections(4)
+        .max_connections(2)
         .connect(&db_url)
         .await
         .expect("Pool failed");
 
-    info!("Doing migrations");
+    info!("Start migrations");
     Migrator::new(migrations)
         .await
         .unwrap()
@@ -117,6 +148,12 @@ async fn main() -> std::io::Result<()> {
         .filesystem(LocalFs::new(&folder, false, false, false))
         .locksystem(FakeLs::new())
         .build_handler();
+
+    tracing::info!("🚀 Server started successfully");
+    http::serve(&pool)
+        .await
+        .unwrap();
+
 
     HttpServer::new(move || {
         App::new()

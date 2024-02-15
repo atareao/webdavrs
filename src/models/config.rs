@@ -4,6 +4,11 @@ use chrono::{DateTime, Utc};
 use tracing::{info, debug};
 use std::collections::HashMap;
 use super::Error;
+use rand::{
+    thread_rng,
+    Rng,
+    distributions::Alphanumeric,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Param{
@@ -28,6 +33,12 @@ impl Param{
     pub async fn get_url(pool: &SqlitePool) -> Result<String, Error>{
         Self::get(pool, "url")
             .await
+    }
+
+    fn get_random_word(size: usize) -> String{
+        thread_rng().sample_iter(&Alphanumeric)
+            .take(size)
+            .collect()
     }
 
     pub async fn get_port(pool: &SqlitePool) -> Result<String, u16>{
