@@ -1,35 +1,51 @@
-use std::sync::Arc;
+use axum::{
+    response::IntoResponse,
+    Json,
+    http::StatusCode,
+};
+use serde_json::json;
 use axum_auth::AuthBasic;
-use crate::{
-    models::{
-        User,
-        Role,
-    }
+use sqlx::SqlitePool;
+use crate::models::{
+    NewUser,
+    User,
+    Role,
 };
 
-pub fn router() -> Router<Arc<AppState>>{
-
-}
 
 
-pub async fn create_user(auth: AuthBasic, pool: &SqlitePool, new: web::Json<NewUser>) -> impl Responder{
+pub async fn create_user(
+    auth: AuthBasic,
+    pool: &SqlitePool,
+    Json(newUser): Json<NewUser>,
+) -> impl IntoResponse{
     match User::from_auth(&auth, &pool).await {
         Some(user) =>  if user.is_admin(){
                 let role = Role::User.to_string();
-                match User::create(&pool, &role, &new.into_inner()).await {
-                    Ok(new_user) => HttpResponse::Created()
-                        .content_type(ContentType::json())
-                        .body(serde_json::to_string(&new_user).unwrap()),
-                    Err(_) => HttpResponse::UnprocessableEntity().finish(),
+                match User::create(&pool, &role, &newUser).await {
+                    Ok(new_user) => (StatusCode::OK, Json(json!({
+                        "result": "ok",
+                        "message": "New user created",
+                        "content": new_user
+                    }))),
+                    Err(e) => (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({
+                        "result": "ko",
+                        "message": e.to_string(),
+                    })))
                 }
             }else{
-                HttpResponse::Unauthorized().finish()
+                (StatusCode::UNAUTHORIZED, Json(json!({
+                    "result": "ko",
+                    "message": "Unauthorized"
+                })))
             },
-        None => HttpResponse::Unauthorized().finish(),
+        None => (StatusCode::UNAUTHORIZED, Json(json!({
+                    "result": "ko",
+                    "message": "Unauthorized"
+                }))),
     }
 }
 
-#[get("/v1/user/{username}")]
 pub async fn read_user(auth: BasicAuth, pool: web::Data<SqlitePool>, path: web::Path<String>) -> impl Responder{
     let username = path.into_inner();
     match User::from_auth(&auth, &pool).await {

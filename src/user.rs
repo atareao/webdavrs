@@ -1,10 +1,7 @@
-use actix_web::{post, get, delete, web, Responder, HttpResponse, http::header::ContentType};
-use actix_web_httpauth::extractors::basic::BasicAuth;
 use sqlx::{sqlite::{SqlitePool, SqliteRow}, Error, query, Row};
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 use std::env;
-use md5;
 use derive_more::Display;
 
 #[derive(Debug, Display, PartialEq)]

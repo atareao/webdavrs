@@ -13,6 +13,7 @@ use axum::{
     Json,
     middleware::from_fn_with_state
 };
+use axum_auth::AuthBasic;
 use minijinja::{
     context,
     value::Value,
@@ -20,11 +21,8 @@ use minijinja::{
 
 
 use crate::{
-    models::Param,
-    http::{
-        AppState,
-        jwt_auth::auth
-    },
+    models::{Param, User},
+    http::AppState,
 };
 use tracing::{debug, error};
 use super::ENV;
@@ -33,17 +31,18 @@ pub fn router(app_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         .route("/config",
             routing::get(get_config)
-            .route_layer(from_fn_with_state(app_state.clone(), auth))
         )
         .route("/config",
             routing::post(post_config)
-            .route_layer(from_fn_with_state(app_state.clone(), auth))
         )
 }
 
 pub async fn get_config(
+    auth: AuthBasic,
     State(app_state): State<Arc<AppState>>,
 ) -> impl IntoResponse{
+    if User::read_and_check(&auth, &app_state.pool).await.is_err(){
+    }
     let params = Param::get_all(&app_state.pool).await.unwrap();
     debug!("{:?}", params);
     let template = ENV.get_template("config.html").unwrap();
@@ -72,6 +71,7 @@ struct KeyValue{
 }
 
 async fn post_config(
+    AuthBasic((id, password)): AuthBasic,
     State(app_state): State<Arc<AppState>>,
     Json(pairs): Json<Vec<KeyValue>>,
 ) -> impl IntoResponse{

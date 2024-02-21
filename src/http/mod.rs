@@ -3,6 +3,7 @@ mod estatic;
 mod root;
 mod config;
 mod webdav;
+mod basic_auth;
 
 use std::{sync::Arc, net::{SocketAddr, Ipv4Addr}, fmt::format};
 use sqlx::sqlite::SqlitePool;

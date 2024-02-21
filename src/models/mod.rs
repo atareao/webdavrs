@@ -4,6 +4,7 @@ pub mod config;
 pub use config::Param;
 pub use user::{
     User,
+    NewUser,
     Role,
 };
 
