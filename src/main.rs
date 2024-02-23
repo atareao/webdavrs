@@ -1,6 +1,5 @@
 mod http;
 mod models;
-mod list;
 mod user;
 
 use sqlx::{
@@ -21,8 +20,6 @@ use std::{
     path::Path,
     process
 };
-use env_logger::Env;
-use log::{error, info};
 use dav_server::{
     fakels::FakeLs,
     localfs::LocalFs,

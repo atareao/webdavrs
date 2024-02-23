@@ -1,96 +1,149 @@
+use std::sync::Arc;
+use std::{
+    fmt,
+    str::FromStr,
+};
 use axum::{
+    extract::{
+        State,
+        Query,
+    },
+    Router,
+    routing,
+    middleware,
     response::IntoResponse,
     Json,
     http::StatusCode,
 };
-use serde_json::json;
-use axum_auth::AuthBasic;
-use sqlx::SqlitePool;
-use crate::models::{
-    NewUser,
-    User,
-    Role,
+use serde::{de, Deserialize, Deserializer};
+use crate::{
+    http::{
+        AppState,
+        jwt_auth::auth,
+    },
+    models::{
+        Response,
+        NewUser,
+        User,
+        Role,
+    }
 };
+
+pub fn router(app_state: Arc<AppState>) -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/api/v1/users",
+            routing::post(create_user)
+                .route_layer(middleware::from_fn_with_state(app_state.clone(), auth))
+        )
+        .route("/api/v1/users",
+            routing::get(read_user)
+                .route_layer(middleware::from_fn_with_state(app_state.clone(), auth))
+        )
+        .route("/api/v1/users",
+            routing::delete(delete_user)
+                .route_layer(middleware::from_fn_with_state(app_state.clone(), auth))
+        )
+}
 
 
 
 pub async fn create_user(
-    auth: AuthBasic,
-    pool: &SqlitePool,
+    State(app_state): State<Arc<AppState>>,
     Json(newUser): Json<NewUser>,
 ) -> impl IntoResponse{
-    match User::from_auth(&auth, &pool).await {
-        Some(user) =>  if user.is_admin(){
-                let role = Role::User.to_string();
-                match User::create(&pool, &role, &newUser).await {
-                    Ok(new_user) => (StatusCode::OK, Json(json!({
-                        "result": "ok",
-                        "message": "New user created",
-                        "content": new_user
-                    }))),
-                    Err(e) => (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({
-                        "result": "ko",
-                        "message": e.to_string(),
-                    })))
-                }
-            }else{
-                (StatusCode::UNAUTHORIZED, Json(json!({
-                    "result": "ko",
-                    "message": "Unauthorized"
-                })))
-            },
-        None => (StatusCode::UNAUTHORIZED, Json(json!({
-                    "result": "ko",
-                    "message": "Unauthorized"
-                }))),
+    let role = Role::User.to_string();
+    match User::create(&app_state.pool, &role, &newUser).await {
+        Ok(new_user) => (StatusCode::OK, Json(Response{
+            status: true,
+            message: "New user created",
+            data: Some(new_user)
+        })),
+        Err(e) => (StatusCode::UNPROCESSABLE_ENTITY, Json(Response{
+            status: false,
+            message: &e.to_string(),
+            data: None
+        }))
     }
 }
 
-pub async fn read_user(auth: BasicAuth, pool: web::Data<SqlitePool>, path: web::Path<String>) -> impl Responder{
-    let username = path.into_inner();
-    match User::from_auth(&auth, &pool).await {
-        Some(user) =>  if user.is_admin(){
-                match User::read(&pool, &username).await {
-                    Ok(user) => HttpResponse::Ok()
-                        .content_type(ContentType::json())
-                        .body(serde_json::to_string(&user).unwrap()),
-                    Err(_) => HttpResponse::UnprocessableEntity().finish(),
-                }
-            }else{
-                HttpResponse::Unauthorized().finish()
-            },
-        None => HttpResponse::Unauthorized().finish(),
+#[derive(Debug, Deserialize)]
+struct Params {
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    username: Option<String>,
+}
+
+pub async fn read_user(
+    State(app_state): State<Arc<AppState>>,
+    Query(Params{username}): Query<Params>,
+) -> impl IntoResponse{
+    match username {
+        Some(username) => read_user(app_state, username).await, 
+        None => read_all_users(app_state).await,
     }
 }
 
-#[get("/v1/user")]
-pub async fn read_all_users(auth: BasicAuth, pool: web::Data<SqlitePool>) -> impl Responder{
-    match User::from_auth(&auth, &pool).await {
-        Some(user) =>  if user.is_admin(){
-                match User::read_all(&pool).await {
-                    Ok(users) => HttpResponse::Ok()
-                        .content_type(ContentType::json())
-                        .body(serde_json::to_string(&users).unwrap()),
-                    Err(_) => HttpResponse::UnprocessableEntity().finish(),
-                }
-            }else{
-                HttpResponse::Unauthorized().finish()
-            },
-        None => HttpResponse::Unauthorized().finish(),
+pub async fn read_one_user(
+    app_state: Arc<AppState>,
+    username: String,
+) -> impl IntoResponse{
+    match User::read(&app_state, &username).await {
+        Ok(user) => (StatusCode::OK, Json(Response{
+            status: true,
+            message: "User found",
+            data: Some(user)
+        })),
+        Err(e) => (StatusCode::NOT_FOUND, Json(Response{
+            status: false,
+            message: &e.to_string(),
+            data: None
+        }))
     }
 }
 
-#[delete("/v1/user")]
-pub async fn delete_user(auth: BasicAuth, pool: web::Data<SqlitePool>, username: String) -> impl Responder{
-    match User::from_auth(&auth, &pool).await {
-        Some(user) =>  if user.is_admin(){
-                match User::delete(&pool, &username).await {
-                    Ok(_) => HttpResponse::Ok().finish(),
-                    Err(_) => HttpResponse::NotFound().finish(),
-                }
-            }else{
-                HttpResponse::Unauthorized().finish()
-            },
-        None => HttpResponse::Unauthorized().finish(),
+pub async fn read_all_users(
+    State(app_state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    match User::read_all(&app_state.pool).await {
+        Ok(users) => (StatusCode::OK, Json(Response{
+            status: true,
+            message: "All users",
+            data: Some(users)
+        })),
+        Err(e) => (StatusCode::NOT_FOUND, Json(Response{
+            status: false,
+            message: &e.to_string(),
+            data: None
+        }))
+    }
+}
+
+pub async fn delete_user(
+    State(app_state): State<Arc<AppState>>,
+    Query(username): Query<String>,
+) -> impl IntoResponse{
+    match User::delete(&app_state.pool, &username).await {
+        Ok(user) => (StatusCode::OK, Json(Response{
+            status: true,
+            message: "Delete user",
+            data: Some(user)
+        })),
+        Err(e) => (StatusCode::NOT_FOUND, Json(Response{
+            status: false,
+            message: &e.to_string(),
+            data: None
+        }))
+    }
+}
+
+fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: FromStr,
+    T::Err: fmt::Display,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    match opt.as_deref() {
+        None | Some("") => Ok(None),
+        Some(s) => FromStr::from_str(s).map_err(de::Error::custom).map(Some),
     }
 }

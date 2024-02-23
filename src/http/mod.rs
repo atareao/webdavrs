@@ -2,8 +2,7 @@ mod user;
 mod estatic;
 mod root;
 mod config;
-mod webdav;
-mod basic_auth;
+mod jwt_auth;
 
 use std::{sync::Arc, net::{SocketAddr, Ipv4Addr}, fmt::format};
 use sqlx::sqlite::SqlitePool;
@@ -69,7 +68,7 @@ pub async fn serve(pool: &SqlitePool) -> Result<(), Error>{
 fn api_router(app_state: AppState) -> Router {
     estatic::router()
         .merge(root::router(Arc::new(app_state.clone())))
-        .merge(user::router())
+        .merge(user::router(Arc::new(app_state.clone())))
         .merge(config::router(Arc::new(app_state.clone())))
         .with_state(Arc::new(app_state.clone()))
 }
