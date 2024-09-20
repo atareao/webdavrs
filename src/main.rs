@@ -1,6 +1,5 @@
 mod http;
 mod models;
-mod user;
 
 use sqlx::{
     sqlite::{
