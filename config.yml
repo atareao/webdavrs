@@ -1,5 +1,5 @@
 port: 9090
-directory: /tmp
+directory: /home/lorenzo/sandbox
 users:
   - name: user1
     hashed_password: "25d55ad283aa400af464c76d713c07ad"

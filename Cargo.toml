@@ -13,9 +13,11 @@ actix-web = "4.9.0"
 actix-web-httpauth = "0.8.2"
 dav-server = { version = "0.7", features = ["actix-compat"] }
 md5 = "0.7.0"
+minijinja = { version = "2.3.1", features = ["loader"] }
+once_cell = "1.19.0"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_yaml = "0.9.34"
-tokio = { version = "1.40", features = ["full"]}
+tokio = { version = "1.40", features = ["fs", "full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["local-time", "env-filter"] }
 

@@ -1,17 +1,12 @@
+mod models;
+mod http;
+
 use actix_web::{
-    dev::ServiceRequest,
     web,
     App,
     HttpServer,
-    Error as ActixError,
-    error::ErrorUnauthorized,
 };
-use actix_web_httpauth::{
-    extractors::basic::BasicAuth,
-    middleware::HttpAuthentication,
-};
-use dav_server::actix::*;
-use dav_server::{memls::MemLs, localfs::LocalFs, DavConfig, DavHandler};
+use actix_web_httpauth::middleware::HttpAuthentication;
 use std::env::var;
 use tracing_subscriber::{
     filter::EnvFilter,
@@ -20,35 +15,14 @@ use tracing_subscriber::{
 };
 use std::str::FromStr;
 use tracing::info;
-use crate::models::{Error, Config};
 
-mod models;
-
-
-pub async fn dav_handler(
-    req: DavRequest,
-    davhandler: web::Data<DavHandler>,
-) -> DavResponse {
-    if let Some(prefix) = req.prefix() {
-        let config = DavConfig::new().strip_prefix(prefix);
-        davhandler.handle_with(config, req.request).await.into()
-    } else {
-        davhandler.handle(req.request).await.into()
-    }
-}
-
-async fn validator(
-    req: ServiceRequest,
-    credentials: BasicAuth,
-) -> Result<ServiceRequest, (ActixError, ServiceRequest)> {
-    let config: &Config = req.app_data::<web::Data<Config>>()
-        .expect("Config data missing in request handler.");
-    if config.check_auth(&credentials){
-        Ok(req)
-    }else{
-        Err((ErrorUnauthorized("User not authorized"), req))
-    }
-}
+use models::Error;
+use http::{
+    index,
+    dav_handler,
+    get_dav_server,
+    validator,
+};
 
 #[actix_web::main]
 async fn main() -> Result<(), Error> {
@@ -60,13 +34,7 @@ async fn main() -> Result<(), Error> {
     info!("Log level: {log_level}");
 
     let config = models::Config::read().await.unwrap();
-
     let dir = config.get_directory();
-
-    let dav_server = DavHandler::builder()
-        .filesystem(LocalFs::new(dir, false, false, false))
-        .locksystem(MemLs::new())
-        .build_handler();
     let addr = format!("0.0.0.0:{}", config.get_port());
 
     tracing::info!("🚀 Server started successfully");
@@ -75,7 +43,8 @@ async fn main() -> Result<(), Error> {
         App::new()
             .app_data(web::Data::new(config.clone()))
             .wrap(auth)
-            .app_data(web::Data::new(dav_server.clone()))
+            .app_data(web::Data::new(get_dav_server(&dir)))
+            .service(index)
             .service(web::resource("/{tail:.*}").to(dav_handler))
     })
     .bind(addr)?
