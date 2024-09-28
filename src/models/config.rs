@@ -1,5 +1,7 @@
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use serde::{Serialize, Deserialize};
+use bcrypt::verify;
+
 use super::{Error, User};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -24,7 +26,7 @@ impl Config {
             if user.active &&
                 user.name == creds.user_id() &&
                 creds.password().is_some() &&
-                user.hashed_password == format!("{:x}", md5::compute(creds.password().unwrap())){
+                verify(creds.password().unwrap(), &user.hashed_password).unwrap(){
                     return true;
             }
         }
