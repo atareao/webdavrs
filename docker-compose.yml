@@ -1,0 +1,12 @@
+services:
+  webdavrs:
+    image: atareao/webdavrs:v0.1.1
+    init: true
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./:/share
+    environment:
+      - RUST_LOG=debug
