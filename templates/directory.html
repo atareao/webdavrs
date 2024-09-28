@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{{ main_dir }}</title>
+    <!--
+    <link rel="stylesheet" href="style.css">
+    -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  </head>
+  <body>
+    <header>
+      <h1>{{ main_dir }}</h1>
+    </header>
+    <main>
+      <p><span><strong>/{{ path }}</strong></span></p>
+      <ul class="fa-ul">
+        {% if main_parent_path == root %}
+                <li><a href="/"><span class="fa-li"><i class="fa-solid fa-folder"></i></span>..</a></li>
+        {% elif main_path != "" %}
+                <li><a href="/{{ main_parent_path }}"><span class="fa-li"><i class="fa-solid fa-folder"></i></span>..</a></li>
+        {% endif %}
+        {% for item in items %}
+            {% if item.is_dir %}
+                <li><a href="/{{ item.path }}"><span class="fa-li"><i class="fa-solid fa-folder"></i></span>{{ item.name }}</a></li>
+            {% else %}
+                <li><span class="fa-li"><i class="fa-solid fa-file"></i></span>{{ item.name }}</li>
+            {% endif %}
+        {% endfor %}
+      </ul>
+    </main>
+  </body>
+</html>
+
