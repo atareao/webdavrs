@@ -9,12 +9,17 @@ pub struct Config{
     port: u16,
     directory: String,
     users: Vec<User>,
+    workers: usize,
 }
 
 impl Config {
 
     pub fn get_port(&self) -> u16 {
         self.port
+    }
+
+    pub fn get_workers(&self) -> usize {
+        self.workers
     }
 
     pub fn get_directory(&self) -> String {

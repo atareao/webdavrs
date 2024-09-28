@@ -35,6 +35,7 @@ async fn main() -> Result<(), Error> {
 
     let config = models::Config::read().await.unwrap();
     let dir = config.get_directory();
+    let workers = config.get_workers();
     let addr = format!("0.0.0.0:{}", config.get_port());
 
     tracing::info!("🚀 Server started successfully");
@@ -48,6 +49,7 @@ async fn main() -> Result<(), Error> {
             .service(web::resource("/{tail:.*}").to(dav_handler))
     })
     .bind(addr)?
+    .workers(workers)
     .run()
     .await
     .map_err(|e|  e.into())
