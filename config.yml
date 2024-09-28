@@ -3,10 +3,10 @@ directory: /share
 workers: 4
 users:
   - name: user1
-    hashed_password: ":$2y$10$R5PeUvhiPciZA2NsBuky0eS/LKCQ0kMHxrOBpuABeikRA8VRVOOIi"
+    hashed_password: '$2y$12$foIrZBsGcEq09HzNSKGaAOYuOcAFl23tfXyDaYdUL/wt0ug.UGlbO'
     active: true
   - name: user2
-    hashed_password: ":$2y$10$QQg//X8./ENAZS7EUWjHrehvbNOm9jbIaltd4wf92WXh8i4PvEhIO"
+    hashed_password: '$2y$12$7ZGW1LGiV/UKLpElwJx20OzpF8dxd4deUAvcqoMM1UinuRAX6o8oS'
     active: true
 
 
