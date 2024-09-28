@@ -34,9 +34,19 @@ RUN apk add --update --no-cache \
 
 
 # Copy the migrations
-COPY migrations/ /app/migrations/
+COPY templates/ /app/templates/
 # Copy our build
 COPY --from=builder /app/webdavrs /app/
+
+# Create the user
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/${USER}" \
+    --shell "/sbin/nologin" \
+    --uid "${UID}" \
+    "${USER}" && \
+    chown -R ${USER}:${USER} /app
 
 # Set the work dir
 WORKDIR /app
