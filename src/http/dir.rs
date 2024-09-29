@@ -1,5 +1,8 @@
+use axum::{
+    extract::{Path, State},
+    response::{IntoResponse, Response}
+};
 use serde::{Serialize, Deserialize};
-use actix_web::{get, Responder, HttpResponse, web};
 use once_cell::sync::Lazy;
 use minijinja::{Environment, path_loader, context};
 use crate::models::Config;
@@ -26,12 +29,11 @@ struct PathItem {
     is_dir: bool,
 }
 
-#[get("/{tail:.*}")]
-pub async fn index(config: web::Data<Config>, path_info: web::Path<PathInfo>) -> impl Responder {
-    if let Some(rendered) = render_directory(&config.get_directory(), &path_info.tail).await{
-        HttpResponse::Ok().body(rendered)
+pub async fn index(config: State<Config>, Path(path): Path<String>) -> impl IntoResponse{
+    if let Some(rendered) = render_directory(&config.get_directory(), &path).await{
+        Response::new(rendered)
     }else{
-        HttpResponse::Ok().body("")
+        Response::new("".to_string())
     }
 }
 

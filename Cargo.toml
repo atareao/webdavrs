@@ -9,8 +9,8 @@ rust-version = "1.76"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "4.9.0"
-actix-web-httpauth = "0.8.2"
+axum = "0.7.7"
+axum-auth = { version = "0.7.0", features = ["auth-basic"] }
 bcrypt = "0.15.1"
 dav-server = { version = "0.7", features = ["actix-compat"] }
 minijinja = { version = "2.3.1", features = ["loader"] }
@@ -18,6 +18,7 @@ once_cell = "1.19.0"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_yaml = "0.9.34"
 tokio = { version = "1.40", features = ["fs", "full"] }
+tower = "0.5.1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["local-time", "env-filter"] }
 
