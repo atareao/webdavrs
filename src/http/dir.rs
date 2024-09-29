@@ -1,8 +1,6 @@
 use serde::{Serialize, Deserialize};
-use actix_web::{get, Responder, HttpResponse, web};
 use once_cell::sync::Lazy;
 use minijinja::{Environment, path_loader, context};
-use crate::models::Config;
 use tokio::fs::File;
 use std::path::PathBuf;
 use tracing::{debug, error};
@@ -14,11 +12,6 @@ pub static ENV: Lazy<Environment<'static>> = Lazy::new(|| {
     env
 });
 
-#[derive(Deserialize)]
-struct PathInfo {
-    tail: String,
-}
-
 #[derive(Serialize, Deserialize)]
 struct PathItem {
     name: String,
@@ -26,16 +19,7 @@ struct PathItem {
     is_dir: bool,
 }
 
-#[get("/{tail:.*}")]
-pub async fn index(config: web::Data<Config>, path_info: web::Path<PathInfo>) -> impl Responder {
-    if let Some(rendered) = render_directory(&config.get_directory(), &path_info.tail).await{
-        HttpResponse::Ok().body(rendered)
-    }else{
-        HttpResponse::Ok().body("")
-    }
-}
-
-async fn render_directory(root: &str, path: &str) -> Option<String> {
+pub async fn render_directory(root: &str, path: &str) -> Option<String> {
     let file_dir = format!("{}/{}", root, path);
     debug!("Reading directory: {}", &file_dir);
     let file = File::open(&file_dir).await.unwrap();
@@ -60,9 +44,7 @@ async fn render_directory(root: &str, path: &str) -> Option<String> {
                     is_dir: path.is_dir(),
                 });
             }
-            let mut env = Environment::new();
-            env.set_loader(path_loader("templates"));
-            let template = env.get_template("directory.html").unwrap();
+            let template = ENV.get_template("directory.html").unwrap();
             let ctx = context! {
                 main_path => main_path.to_str().unwrap().replace(&format!("{root}/"), ""),
                 main_parent_path => main_parent_path.to_str().unwrap().replace(&format!("{root}/"), ""),

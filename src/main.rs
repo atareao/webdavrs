@@ -18,7 +18,6 @@ use tracing::info;
 
 use models::Error;
 use http::{
-    index,
     dav_handler,
     get_dav_server,
     validator,
@@ -45,7 +44,7 @@ async fn main() -> Result<(), Error> {
             .app_data(web::Data::new(config.clone()))
             .wrap(auth)
             .app_data(web::Data::new(get_dav_server(&dir)))
-            .service(index)
+            //.service(index)
             .service(web::resource("/{tail:.*}").to(dav_handler))
     })
     .bind(addr)?
