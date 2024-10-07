@@ -1,24 +1,23 @@
-use actix_web::{
-    web,
-};
+use tower::Service;
 use dav_server::actix::*;
 use dav_server::{memls::MemLs, localfs::LocalFs, DavConfig, DavHandler};
-use crate::models::Config;
-use super::render_directory;
-use http::Response;
+use axum::{
+    handler::{HandlerWithoutStateExt, Handler},
+    extract::{State, Request},
+};
 use tracing::info;
+use std::sync::Arc;
+use crate::models::Config;
 
 pub async fn dav_handler(
-    req: DavRequest,
-    davhandler: web::Data<DavHandler>,
-    config: web::Data<Config>,
+    request: Request,
+    State(config): State<Config>,
+    State(davhandler): State<Arc<DavHandler>>,
 ) -> DavResponse {
-    if let Some(prefix) = req.prefix() {
-        let config = DavConfig::new().strip_prefix(prefix);
-        davhandler.handle_with(config, req.request).await.into()
-    } else if req.request.method() == "GET" && req.request.uri().to_string().ends_with('/') {
+    let prefix = request.uri().path();
+    if request.method() == "GET" && request.uri().to_string().ends_with('/') {
         let maindir = config.get_directory();
-        let subdir = req.request.uri().to_string();
+        let subdir = request.uri().to_string();
         info!("maindir: {}", &maindir);
         info!("subdir: {}", &subdir);
         if let Some(content) = render_directory(&maindir, &subdir).await{
@@ -30,9 +29,12 @@ pub async fn dav_handler(
             DavResponse(Response::builder().status(404).body(dav_server::body::Body::empty()).unwrap())
         }
     } else {
-        davhandler.handle(req.request).await.into()
+        davhandler.handle(request).await.into()
     }
 }
+
+//assert_service(dav_handler);
+
 
 pub fn get_dav_server(dir: &str) -> DavHandler {
     DavHandler::builder()
@@ -40,3 +42,8 @@ pub fn get_dav_server(dir: &str) -> DavHandler {
         .locksystem(MemLs::new())
         .build_handler()
 }
+
+fn assert_service<S>(service: S)
+where
+    S: Service<Request>
+{}

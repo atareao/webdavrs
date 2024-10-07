@@ -1,4 +1,4 @@
-use actix_web_httpauth::extractors::basic::BasicAuth;
+use axum_auth::AuthBasic;
 use serde::{Serialize, Deserialize};
 use bcrypt::verify;
 
@@ -9,7 +9,6 @@ pub struct Config{
     port: u16,
     directory: String,
     users: Vec<User>,
-    workers: usize,
 }
 
 impl Config {
@@ -18,21 +17,17 @@ impl Config {
         self.port
     }
 
-    pub fn get_workers(&self) -> usize {
-        self.workers
-    }
-
     pub fn get_directory(&self) -> String {
         self.directory.clone()
     }
 
-    pub fn check_auth(&self, creds: &BasicAuth) -> bool {
-        for user in self.users.iter() {
-            if user.active &&
-                user.name == creds.user_id() &&
-                creds.password().is_some() &&
-                verify(creds.password().unwrap(), &user.hashed_password).unwrap(){
-                    return true;
+    pub fn check_auth(&self, AuthBasic((user_id, password)): AuthBasic) -> bool {
+        if let Some(password) = password {
+            for user in self.users.iter() {
+                if user.active && user.name == user_id &&
+                    verify(&password, &user.hashed_password).unwrap(){
+                        return true;
+                }
             }
         }
         false

@@ -1,6 +1,5 @@
 port: 9090
 directory: /share
-workers: 4
 users:
   - name: user1
     hashed_password: '$2y$12$foIrZBsGcEq09HzNSKGaAOYuOcAFl23tfXyDaYdUL/wt0ug.UGlbO'
