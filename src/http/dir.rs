@@ -23,7 +23,15 @@ struct PathItem {
     is_dir: bool,
 }
 
-pub async fn render_directory(root: &str, path: &str) -> Option<String> {
+pub async fn index(config: State<Config>, Path(path): Path<String>) -> impl IntoResponse{
+    if let Some(rendered) = render_directory(&config.get_directory(), &path).await{
+        Response::new(rendered)
+    }else{
+        Response::new("".to_string())
+    }
+}
+
+async fn render_directory(root: &str, path: &str) -> Option<String> {
     let file_dir = format!("{}/{}", root, path);
     debug!("Reading directory: {}", &file_dir);
     let file = File::open(&file_dir).await.unwrap();
