@@ -1,8 +1,9 @@
-use axum_auth::AuthBasic;
 use serde::{Serialize, Deserialize};
 use bcrypt::verify;
 
 use super::{Error, User};
+use tracing::debug;
+
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config{
@@ -21,12 +22,14 @@ impl Config {
         self.directory.clone()
     }
 
-    pub fn check_auth(&self, AuthBasic((user_id, password)): AuthBasic) -> bool {
-        if let Some(password) = password {
-            for user in self.users.iter() {
-                if user.active && user.name == user_id &&
-                    verify(&password, &user.hashed_password).unwrap(){
-                        return true;
+    pub fn check_auth(&self, auth_basic: Vec<&str>) -> bool {
+        if auth_basic.len() == 2 {
+            let name = auth_basic[0];
+            let password = auth_basic[1];
+            for user in &self.users {
+                debug!("{:?}", user);
+                if user.active && name == user.name {
+                    return verify(password, &user.hashed_password).unwrap_or(false);
                 }
             }
         }

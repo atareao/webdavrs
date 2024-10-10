@@ -8,6 +8,7 @@ use minijinja::{Environment, path_loader, context};
 use tokio::fs::File;
 use std::path::PathBuf;
 use tracing::{debug, error};
+use crate::models::Config;
 
 
 pub static ENV: Lazy<Environment<'static>> = Lazy::new(|| {
@@ -31,7 +32,7 @@ pub async fn index(config: State<Config>, Path(path): Path<String>) -> impl Into
     }
 }
 
-async fn render_directory(root: &str, path: &str) -> Option<String> {
+pub async fn render_directory(root: &str, path: &str) -> Option<String> {
     let file_dir = format!("{}/{}", root, path);
     debug!("Reading directory: {}", &file_dir);
     let file = File::open(&file_dir).await.unwrap();

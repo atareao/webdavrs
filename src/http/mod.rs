@@ -1,6 +1,7 @@
 pub mod dir;
-pub mod webdav;
 pub mod auth;
+pub mod webdav;
 
 pub use dir::render_directory;
-pub use webdav::{dav_handler, get_dav_server};
+pub use dir::index;
+pub use auth::auth_middleware;

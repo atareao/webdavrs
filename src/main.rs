@@ -2,12 +2,12 @@ mod models;
 mod http;
 
 use std::env::var;
-use std::convert::Infallible;
 use axum::{
-    extract::{State, Request},
+    extract::State,
     routing::{get, Router},
+    middleware::from_fn_with_state,
 };
-use tower::service_fn;
+use axum::response::IntoResponse;
 use tracing_subscriber::{
     filter::EnvFilter,
     layer::SubscriberExt,
@@ -15,14 +15,18 @@ use tracing_subscriber::{
 };
 use std::str::FromStr;
 use tracing::info;
-use std::sync::Arc;
+use crate::http::index;
 
 use models::Error;
-use http::{
-    dav_handler,
-    get_dav_server,
-};
-use dav_server::{fakels::FakeLs, memls::MemLs, localfs::LocalFs, DavConfig, DavHandler};
+use http::auth_middleware;
+use dav_server::{fakels::FakeLs, localfs::LocalFs, DavHandler};
+
+
+pub async fn dav_handler(State(dav_server): State<DavHandler>) -> impl IntoResponse {
+    //Ok::<_, Infallible>(dav_server.handle(req).await)
+    //let response = dav_server.handle(req).await;
+    //response.into_response()
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -34,26 +38,48 @@ async fn main() -> Result<(), Error> {
     info!("Log level: {log_level}");
 
     let config = models::Config::read().await?;
-    let dir = config.get_directory();
     let addr = format!("0.0.0.0:{}", config.get_port());
 
     let dav_server = DavHandler::builder()
-        .filesystem(LocalFs::new(dir, false, false, false))
+        .filesystem(LocalFs::new(config.get_directory(),
+            false, false, false))
         .locksystem(FakeLs::new())
         .build_handler();
 
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+
     tracing::info!("🚀 Server started successfully");
     let app = Router::new()
-        .route("/", get(index))
+        //.route("/", get(index))
         .route("/*tail", get(index))
-        .route_service("/dav", dav_handler)
-        .route_service("/dav", service_fn(|req: Request| async move {
-            let dav_server = dav_server.clone();
-            Ok::<_, Infallible>(dav_server.handle(req).await)
-        }))
-        .with_state(config)
-        .with_state(Arc::new(get_dav_server(&dir)));
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
+        //.route("/*tail", get(index))
+        //.route("/*tail", any(dav_handler))
+        /*
+        .route_service(
+            "tail", 
+            service_fn(|req: Request| async move {
+                info!("Request received");
+                //let dav_handler = req.extensions().get::<State<DavHandler>>().unwrap();
+                if let Some(State(dav_server)) =  req.extensions().get::<State<DavHandler>>(){
+                    Ok::<_, Infallible>(dav_server.handle(req).await)
+                    //Ok::<_, Infallible>(Response::builder().status(404).body(dav_server::body::Body::empty()).unwrap())
+                } else {
+                    
+                    Ok::<_, Infallible>(Response::builder().status(404).body(dav_server::body::Body::empty()).unwrap())
+
+                    //Ok::<_, Infallible>(dav_server::body::Body::empty())
+                }
+                //info!("Request received");
+
+                //let dav_server = dav_server.clone();
+                //Ok::<_, Infallible>(dav_server.handle(req).await)
+            })
+        )
+        */
+        //.with_state(dav_server)
+        .with_state(config.clone())
+        .route_layer(from_fn_with_state(config.clone(), auth_middleware));
     axum::serve(listener, app).await
         .map_err(|e|  e.into())
 }
+
